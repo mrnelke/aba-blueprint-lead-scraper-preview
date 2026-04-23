@@ -1,14 +1,14 @@
 # BP002 — Lead Scraper Blueprint
 ### Agent Builder Academy — agentbuilderacademy.com
 
-> **This is the public preview.** Full source code, documentation, and n8n workflow are available after purchase.
+> **This is the public preview.** Full source code, documentation, and n8n workflows are available after purchase.
 > 👉 **[Get Access — agentbuilderacademy.com](https://agentbuilderacademy.com)**
 
 ---
 
 A production-ready blueprint for building a stealth lead scraper with Claude Code. Extract **name, email, phone, website, and address** from any target website and export to CSV — in under 15 minutes from setup to first leads.
 
-Designed for solo automation builders who want a clean, secure, and n8n-ready foundation they can adapt to any site.
+Designed for solo automation builders who want a clean, secure, n8n-ready foundation they can run on a schedule across multiple sites.
 
 ---
 
@@ -16,11 +16,13 @@ Designed for solo automation builders who want a clean, secure, and n8n-ready fo
 
 A Python scraper that:
 - Opens a real browser in **stealth mode** (undetectable as a bot)
-- Navigates to your target website and handles all pages automatically
+- Handles all pages automatically with pagination detection
 - Handles common blockers: **cookie walls**, **"click to reveal" buttons**, **JS-obfuscated emails**
 - Extracts: name, email, phone, website, address
-- Writes results to `output/leads.csv`
-- Connects to **n8n** via a ready-to-import workflow (no server needed)
+- **Deduplicates automatically** — never writes the same lead twice
+- Runs **multiple target sites** from a single YAML config file
+- Exports to CSV with a full **run log** (timestamp, new leads, skipped duplicates)
+- Connects to **n8n** on a schedule via two ready-to-import workflows
 
 ---
 
@@ -28,22 +30,42 @@ A Python scraper that:
 
 ```
 bp002-lead-scraper/
-├── scraper.py              # working stealth scraper, fully commented
-├── n8n/workflow.json       # import-ready n8n workflow
-├── .claude/skills/         # /security-check Claude Code skill
-├── CLAUDE.md               # persistent agent context (ABA methodology)
-├── MEMORY.md               # project diary template
-├── QUICK_START.md          # 15 minutes to first leads
+├── scraper.py                    # stealth scraper with CLI, deduplication, multi-site
+├── sites.example.yaml            # multi-site config template (3 documented examples)
+├── n8n/
+│   ├── workflow.json             # manual trigger workflow
+│   └── workflow-scheduled.json  # scheduled pipeline (weekly, with cron reference)
+├── .claude/skills/               # /security-check Claude Code skill
+├── CLAUDE.md                     # persistent agent context (ABA methodology)
+├── MEMORY.md                     # project diary template
+├── QUICK_START.md                # 15 minutes to first leads
 ├── docs/
-│   ├── adapting.md         # step-by-step for any new target site + checklist
-│   ├── troubleshooting.md  # every real error with exact fixes
-│   ├── architecture.md     # how it's built and why
-│   ├── decisions.md        # every key decision with reasoning
-│   └── workflows.md        # setup, run, commit, iterate
+│   ├── adapting.md               # step-by-step guide for any new target site
+│   ├── troubleshooting.md        # every real error with exact fixes
+│   ├── architecture.md           # system design, selectors, email decoding
+│   ├── decisions.md              # every key decision with reasoning
+│   └── workflows.md              # all commands — single site, multi-site, n8n
 ├── requirements.txt
 ├── .env.example
-├── .pre-commit-config.yaml # automatic security checks on commit
+├── .pre-commit-config.yaml       # automatic security checks on commit
 └── LICENSE
+```
+
+---
+
+## CLI — What You Can Run
+
+```bash
+# Single site (reads .env)
+python3 scraper.py
+python3 scraper.py --append               # skip duplicates
+python3 scraper.py --limit 2             # first 2 pages only
+python3 scraper.py --headless false      # watch the browser
+
+# Multi-site (reads sites.yaml)
+python3 scraper.py --site my-directory   # one named site
+python3 scraper.py --all                  # all sites
+python3 scraper.py --all --append         # all sites, skip duplicates
 ```
 
 ---
@@ -59,10 +81,10 @@ Claude reads the stack, architecture rules, and iteration model at the start of 
 Every decision, discovered pattern, and open question is logged. New sessions pick up exactly where you left off.
 
 ### `/security-check` Skill
-One command scans all staged files for secrets, hardcoded URLs, large files, and `.gitignore` gaps before you commit. A pass/fail verdict with file and line references.
+One command scans all staged files for secrets, hardcoded URLs, large files, and `.gitignore` gaps before you commit.
 
 ### Iteration Model
-The scraper is built one step at a time — write a function, run a live test, fix the blocker, commit, repeat. No debugging compound failures.
+The scraper is built one step at a time — write a function, run a live test, fix the blocker, commit, repeat.
 
 ---
 
@@ -71,6 +93,7 @@ The scraper is built one step at a time — write a function, run a live test, f
 Two layers protect secrets and scraped data from entering version control:
 
 **Automatic** — git pre-commit hooks fire on every `git commit`:
+
 | Hook | What it catches |
 |------|-----------------|
 | `detect-secrets` | Passwords, tokens, API keys |
@@ -78,32 +101,48 @@ Two layers protect secrets and scraped data from entering version control:
 | `check-added-large-files` | Files over 500 KB |
 | `check-merge-conflict` | Unresolved conflict markers |
 
-**Manual** — `/security-check` Claude Code skill for deeper review before sensitive commits.
+**Manual** — `/security-check` Claude Code skill for deeper pre-commit review.
 
-Target URLs, credentials, and scraped lead data (PII) are always gitignored.
+Target URLs, credentials, and scraped lead data (PII) are always gitignored. `sites.yaml` is gitignored — your target sites stay private.
 
 ---
 
 ## n8n Integration
 
-A ready-to-import `n8n/workflow.json` is included.
+Two workflows included:
 
-Import it → update two file paths → run. Leads arrive as structured JSON items. Add your destination: **Google Sheets, Airtable, a CRM API, Notion** — whatever comes next in your workflow.
+**`n8n/workflow.json`** — manual trigger. Import → update paths → run.
 
-No API server. No extra infrastructure. One Execute Command node and you're done.
+**`n8n/workflow-scheduled.json`** — runs on a schedule (default: every Monday 9am). Includes:
+- Configurable cron expression with a reference card
+- `--append` flag built in — deduplication is automatic
+- Destination slot ready to connect to Google Sheets, HubSpot, Airtable, or any HTTP endpoint
+
+No API server. No extra infrastructure.
+
+---
+
+## Multi-Site Config
+
+`sites.yaml` defines all your target directories in one file. Each site has its own selectors, email decoding strategy, pagination type, and output file.
+
+Three selector strategies: **icon-anchored**, **CSS selector**, **semantic HTML**
+Three email strategies: **TYPO3 JS decode**, **plain mailto**, **CSS selector**
+Three pagination strategies: **arrow (→)**, **CSS selector**, **single page**
+
+`docs/adapting.md` walks through all three with examples.
 
 ---
 
 ## Adapting to Any Site
 
-The included `docs/adapting.md` is a 9-step guide with a full checklist for pointing the scraper at any new target site. It covers:
-
-- Finding real CSS selectors from the live rendered HTML (not AI guesses)
+`docs/adapting.md` is a 9-step guide with a full checklist:
+- Dumping the real rendered HTML (not guessing selectors from AI)
 - Handling cookie walls, email obfuscation (4 patterns), click-to-reveal
-- Pagination detection for arrows, numbered links, and infinite scroll
-- A checklist to confirm everything works before committing
+- Configuring `sites.yaml` for the new site
+- Pagination patterns for any structure
 
-`docs/troubleshooting.md` documents every real issue hit during development — with the exact error message and fix for each.
+`docs/troubleshooting.md` documents every real issue hit during development — exact error and fix for each.
 
 ---
 
@@ -122,7 +161,7 @@ The included `docs/adapting.md` is a 9-step guide with a full checklist for poin
 
 👉 **[Purchase at agentbuilderacademy.com](https://agentbuilderacademy.com)**
 
-After purchase you will receive access to the private repository containing the full source code, all documentation, and the n8n workflow. Follow `QUICK_START.md` and you will have your first leads within 15 minutes.
+After purchase you will receive access to the private repository with full source code, all documentation, and both n8n workflows. Follow `QUICK_START.md` and you will have your first leads within 15 minutes.
 
 ---
 

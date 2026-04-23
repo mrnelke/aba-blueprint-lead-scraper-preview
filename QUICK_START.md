@@ -86,31 +86,54 @@ Claude reads `CLAUDE.md` and `MEMORY.md` automatically and knows the full projec
 
 ---
 
-## Step 7 — Adapt the scraper to your site
+## Step 7 — Configure your target site
 
-Tell Claude:
+**Option A — Single site (.env)**
 
-> "The target site is [URL]. Please inspect the HTML and update the selectors in scraper.py to extract name, email, phone, website, and address."
-
-Claude will dump the rendered HTML, find the real CSS selectors, update the extraction logic, and handle any blockers it hits.
-
----
-
-## Step 8 — Run the scraper
-
+Edit `.env` and set `TARGET_URL` and `BASE_URL`. Then run:
 ```bash
 python3 scraper.py
 ```
 
+**Option B — Multi-site (sites.yaml)**
+
 ```bash
-head -5 output/leads.csv
+cp sites.example.yaml sites.yaml
+# Edit sites.yaml and add your target sites
+python3 scraper.py --site my-site-name --limit 1   # test first
+python3 scraper.py --all --append                    # run all sites
 ```
+
+Tell Claude: *"The target site is [URL]. Add it to sites.yaml with the correct selectors."* Claude will inspect the HTML, find the real selectors, and configure the entry.
+
+---
+
+## Step 8 — Run and verify
+
+```bash
+python3 scraper.py --limit 1      # test on first page only
+head -5 output/leads.csv           # check the output
+python3 scraper.py --append        # full run, skip duplicates
+cat output/runs.log                # see run history
+```
+
+---
+
+## Step 9 — Set up the scheduled n8n pipeline
+
+1. In n8n → Import from file → `n8n/workflow-scheduled.json`
+2. Update the two file paths
+3. Set your schedule (default: every Monday 9am)
+4. Connect your destination: Google Sheets, CRM, Airtable
+5. Activate
+
+Deduplication runs automatically on every scheduled run.
 
 ---
 
 ## Done
 
-Your leads are in `output/leads.csv` — open in Excel, import into your CRM, or connect to n8n using the included `n8n/workflow.json`.
+Your leads pipeline is live — runs on schedule, skips duplicates, pushes to your destination automatically. See `docs/workflows.md` for all available commands.
 
 ---
 
