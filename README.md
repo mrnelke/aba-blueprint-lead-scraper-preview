@@ -1,4 +1,4 @@
-# BP002 — Lead Scraper Blueprint
+# ABA — Lead Scraper Blueprint
 ### Agent Builder Academy — agentbuilderacademy.com
 
 > **This is the public preview.** Full source code, documentation, and n8n workflows are available after purchase.
